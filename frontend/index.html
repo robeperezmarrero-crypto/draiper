@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RewardDistributor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#080a0f;
+  --bg2:#0d1018;
+  --bg3:#12151e;
+  --border:#1e2433;
+  --border2:#2a3049;
+  --accent:#00e5ff;
+  --accent2:#7c3aed;
+  --accent3:#10b981;
+  --text:#e8eaf0;
+  --muted:#5a6480;
+  --muted2:#8892a4;
+  --danger:#ef4444;
+  --warn:#f59e0b;
+}
+html{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+body{min-height:100vh;background:
+  radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,229,255,0.07) 0%, transparent 60%),
+  radial-gradient(ellipse 60% 40% at 90% 90%, rgba(124,58,237,0.06) 0%, transparent 50%),
+  var(--bg);}
+
+/* GRID NOISE OVERLAY */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 24px 80px;}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:28px 0 48px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;border:1.5px solid var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative;}
+.logo-icon::before{content:'';width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent);}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text);}
+.logo-sub{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;}
+.nav-status{display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:.3s;}
+.dot.online{background:var(--accent3);box-shadow:0 0 8px var(--accent3);}
+.dot.offline{background:var(--danger);}
+
+/* CONFIG STRIP */
+.config-strip{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:32px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.cfg-field{flex:1;min-width:200px;}
+.cfg-field label{display:block;font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.cfg-field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-size:12px;font-family:'Space Mono',monospace;color:var(--text);outline:none;transition:.2s;}
+.cfg-field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,255,0.08);}
+.btn-connect{height:38px;padding:0 20px;background:transparent;border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:.2s;white-space:nowrap;letter-spacing:1px;}
+.btn-connect:hover{background:rgba(0,229,255,0.08);}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),var(--accent));opacity:0.4;}
+.stat-lbl{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.stat-val{font-size:13px;font-family:'Space Mono',monospace;color:var(--text);word-break:break-all;line-height:1.4;}
+.stat-val.accent{color:var(--accent);}
+
+/* TABS */
+.tabs-row{display:flex;gap:2px;margin-bottom:24px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:4px;}
+.tab-btn{flex:1;padding:10px 8px;background:transparent;border:none;border-radius:7px;color:var(--muted2);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:.2s;letter-spacing:.5px;text-transform:uppercase;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{background:var(--bg3);color:var(--accent);border:1px solid var(--border2);}
+
+/* PANELS */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;}
+.card-title{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:20px;display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;display:inline-block;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.field input,.field textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;font-size:12px;font-family:'Space Mono',monospace;color:var(--text);outline:none;transition:.2s;resize:vertical;}
+.field input:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,255,0.06);}
+.field textarea{min-height:80px;line-height:1.6;}
+.hint{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);margin-top:5px;}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 20px;border-radius:6px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:.2s;letter-spacing:1px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);margin-top:4px;}
+.btn:hover{color:var(--text);border-color:var(--border2);}
+.btn.primary{background:rgba(0,229,255,0.07);border-color:var(--accent);color:var(--accent);}
+.btn.primary:hover{background:rgba(0,229,255,0.14);}
+.btn.danger{background:rgba(239,68,68,0.07);border-color:var(--danger);color:var(--danger);}
+.btn.danger:hover{background:rgba(239,68,68,0.14);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* RESULT BOX */
+.result{margin-top:14px;padding:12px 14px;border-radius:8px;font-size:11px;font-family:'Space Mono',monospace;line-height:1.7;word-break:break-all;display:none;border:1px solid transparent;}
+.result.ok{display:block;background:rgba(16,185,129,0.07);border-color:rgba(16,185,129,0.25);color:#34d399;}
+.result.err{display:block;background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.25);color:#f87171;}
+.result.info{display:block;background:rgba(0,229,255,0.05);border-color:rgba(0,229,255,0.2);color:var(--accent);animation:pulse 1.5s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+
+/* TX HASH */
+.tx-link{color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(0,229,255,0.4);}
+.tx-link:hover{border-bottom-color:var(--accent);}
+
+/* USER PANEL — approve flow */
+.approve-banner{background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(0,229,255,0.06));border:1px solid rgba(124,58,237,0.35);border-radius:10px;padding:18px 20px;margin-bottom:20px;}
+.approve-banner h3{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a78bfa;margin-bottom:6px;}
+.approve-banner p{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted2);line-height:1.7;}
+
+/* AMOUNT BADGE */
+.amount-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:20px;padding:4px 14px;font-size:12px;font-family:'Space Mono',monospace;color:var(--accent);margin-top:10px;}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:20px 0;}
+
+/* LOG */
+.log-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;max-height:160px;overflow-y:auto;margin-top:16px;}
+.log-entry{font-size:10px;font-family:'Space Mono',monospace;color:var(--muted2);padding:3px 0;border-bottom:1px solid var(--border);line-height:1.5;}
+.log-entry:last-child{border:none;}
+.log-entry .ts{color:var(--muted);margin-right:8px;}
+.log-entry.ok .msg{color:#34d399;}
+.log-entry.err .msg{color:#f87171;}
+.log-entry.info .msg{color:var(--accent);}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* EXPLORER SELECT */
+.explorer-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;}
+.explorer-row select{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 10px;font-size:11px;font-family:'Space Mono',monospace;color:var(--muted2);outline:none;cursor:pointer;}
+.explorer-row select:focus{border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div>
+        <div class="logo-name">RewardDistributor</div>
+        <div class="logo-sub">EVM Contract Interface</div>
+      </div>
+    </div>
+    <div class="nav-status">
+      <div class="dot" id="dot"></div>
+      <span id="status-txt">disconnected</span>
+    </div>
+  </nav>
+
+  <!-- CONFIG -->
+  <div class="config-strip">
+    <div class="cfg-field" style="flex:2">
+      <label>Backend URL</label>
+      <input id="baseUrl" value="http://localhost:3000" placeholder="https://tu-backend.com" />
+    </div>
+    <div class="cfg-field" style="flex:1.5">
+      <label>API Key</label>
+      <input id="apiKey" type="password" placeholder="ADMIN_API_KEY" />
+    </div>
+    <div class="cfg-field" style="flex:1;min-width:120px;">
+      <label>Explorer</label>
+      <select id="explorerSel">
+        <option value="https://etherscan.io/tx/">Ethereum</option>
+        <option value="https://bscscan.com/tx/">BSC</option>
+        <option value="https://polygonscan.com/tx/">Polygon</option>
+        <option value="https://snowtrace.io/tx/">Avalanche</option>
+        <option value="https://arbiscan.io/tx/">Arbitrum</option>
+      </select>
+    </div>
+    <button class="btn-connect" onclick="connect()">◎ CONNECT</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-lbl">Network</div>
+      <div class="stat-val accent" id="st-status">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Admin</div>
+      <div class="stat-val" id="st-admin" title="">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Recipient</div>
+      <div class="stat-val" id="st-recipient" title="">—</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-row">
+    <button class="tab-btn active" onclick="tab('query',this)">Consultar</button>
+    <button class="tab-btn" onclick="tab('redeem',this)">Redimir</button>
+    <button class="tab-btn" onclick="tab('batch',this)">Batch</button>
+    <button class="tab-btn" onclick="tab('user',this)">Usuario</button>
+    <button class="tab-btn" onclick="tab('admin',this)">Admin</button>
+  </div>
+
+  <!-- PANEL: CONSULTAR -->
+  <div id="panel-query" class="panel active">
+    <div class="card">
+      <div class="card-title">Consultar cantidad canjeable</div>
+      <div class="row2">
+        <div class="field"><label>Wallet del usuario</label><input id="q-user" placeholder="0x..." /></div>
+        <div class="field"><label>Dirección del token</label><input id="q-token" placeholder="0x..." /></div>
+      </div>
+      <button class="btn primary" onclick="queryRedeemable()">▶ CONSULTAR</button>
+      <div class="result" id="r-query"></div>
+    </div>
+  </div>
+
+  <!-- PANEL: REDIMIR -->
+  <div id="panel-redeem" class="panel">
+    <div class="card">
+      <div class="card-title">Redimir tokens (single)</div>
+      <div class="field"><label>Wallet del usuario</label><input id="rd-user" placeholder="0x..." /></div>
+      <div class="field"><label>Dirección del token</label><input id="rd-token" placeholder="0x..." /></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" onclick="previewRedeem()">◎ PREVIEW</button>
+        <button class="btn primary" onclick="doRedeem()">▶ REDIMIR</button>
+      </div>
+      <div class="result" id="r-redeem"></div>
+    </div>
+  </div>
+
+  <!-- PANEL: BATCH -->
+  <div id="panel-batch" class="panel">
+    <div class="card">
+      <div class="card-title">Batch redeem</div>
+      <div class="field"><label>Wallet del usuario</label><input id="bt-user" placeholder="0x..." /></div>
+      <div class="field">
+        <label>Tokens (uno por línea)</label>
+        <textarea id="bt-tokens" placeholder="0xToken1&#10;0xToken2&#10;0xToken3"></textarea>
+        <div class="hint">// cada dirección en una línea separada</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" onclick="parseBatch()">◎ PARSEAR</button>
+        <button class="btn primary" onclick="doBatch()">▶ EJECUTAR BATCH</button>
+      </div>
+      <div class="result" id="r-batch"></div>
+    </div>
+  </div>
+
+  <!-- PANEL: USUARIO -->
+  <div id="panel-user" class="panel">
+    <div class="approve-banner">
+      <h3>⚡ Flujo del usuario</h3>
+      <p>Para que el contrato pueda mover tokens, el usuario debe primero hacer<br><strong style="color:#a78bfa">approve(contractAddress, amount)</strong> en el contrato ERC-20.<br>Sin approve, cualquier redeem fallará con "No allowance".</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Verificar estado del usuario</div>
+      <div class="row2">
+        <div class="field"><label>Wallet usuario</label><input id="u-user" placeholder="0x..." /></div>
+        <div class="field"><label>Token ERC-20</label><input id="u-token" placeholder="0x..." /></div>
+      </div>
+      <button class="btn primary" onclick="checkUser()">▶ VERIFICAR</button>
+      <div class="result" id="r-user"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Dirección del contrato</div>
+      <div class="field"><label>CONTRACT_ADDRESS (para el approve)</label><input id="u-contract" placeholder="0x... (del .env del backend)" /></div>
+      <div class="hint">// El usuario necesita esta dirección para llamar approve() en su wallet</div>
+      <button class="btn" onclick="copyContract()">⊕ COPIAR DIRECCIÓN</button>
+      <div class="result" id="r-contract"></div>
+    </div>
+  </div>
+
+  <!-- PANEL: ADMIN -->
+  <div id="panel-admin" class="panel">
+    <div class="card">
+      <div class="card-title">Cambiar admin</div>
+      <div class="field"><label>Nueva dirección admin</label><input id="new-admin" placeholder="0x..." /></div>
+      <button class="btn danger" onclick="doSetAdmin()">⚠ CAMBIAR ADMIN</button>
+      <div class="result" id="r-admin"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="card">
+      <div class="card-title">Cambiar recipient</div>
+      <div class="field"><label>Nueva dirección recipient</label><input id="new-recipient" placeholder="0x..." /></div>
+      <button class="btn primary" onclick="doSetRecipient()">▶ CAMBIAR RECIPIENT</button>
+      <div class="result" id="r-recipient"></div>
+    </div>
+    <button class="btn" onclick="refreshStats()" style="margin-top:8px">↺ RECARGAR INFO</button>
+  </div>
+
+  <!-- LOG -->
+  <div class="log-wrap" id="log-wrap" style="display:none">
+    <div id="log-entries"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const base = () => $('baseUrl').value.replace(/\/$/,'');
+const key = () => $('apiKey').value;
+const explorer = () => $('explorerSel').value;
+const hdrs = () => ({'Content-Type':'application/json','x-api-key':key()});
+
+let logs = [];
+
+function log(msg, type='info'){
+  const ts = new Date().toLocaleTimeString('es',{hour12:false});
+  logs.unshift({ts,msg,type});
+  if(logs.length>30) logs.pop();
+  const wrap = $('log-wrap');
+  const el = $('log-entries');
+  wrap.style.display='block';
+  el.innerHTML = logs.map(l=>`<div class="log-entry ${l.type}"><span class="ts">[${l.ts}]</span><span class="msg">${l.msg}</span></div>`).join('');
+}
+
+function setResult(id, html, type){
+  const el = $(id);
+  el.innerHTML = html;
+  el.className = 'result ' + type;
+}
+
+function shortAddr(a){ return a ? a.slice(0,6)+'...'+a.slice(-4) : '—'; }
+
+function txLink(hash){
+  return `<a class="tx-link" href="${explorer()}${hash}" target="_blank">${hash.slice(0,12)}...${hash.slice(-8)}</a>`;
+}
+
+function tab(name, btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  $('panel-'+name).classList.add('active');
+}
+
+async function apiFetch(path, opts={}){
+  const r = await fetch(base()+path, {...opts, headers: hdrs()});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error || 'Error '+r.status);
+  return d;
+}
+
+async function connect(){
+  const dot = $('dot');
+  const stxt = $('status-txt');
+  dot.className='dot';
+  stxt.textContent='connecting...';
+  try{
+    await apiFetch('/health');
+    dot.className='dot online';
+    stxt.textContent='online';
+    $('st-status').textContent='✓ online';
+    log('Backend conectado: '+base(),'ok');
+    await refreshStats();
+  }catch(e){
+    dot.className='dot offline';
+    stxt.textContent='offline';
+    $('st-status').textContent='✗ offline';
+    log('Error de conexión: '+e.message,'err');
+  }
+}
+
+async function refreshStats(){
+  try{
+    const [ra,rr] = await Promise.all([
+      apiFetch('/api/reward/admin'),
+      apiFetch('/api/reward/recipient')
+    ]);
+    const a = $('st-admin');
+    const r = $('st-recipient');
+    a.textContent = shortAddr(ra.admin);
+    a.title = ra.admin||'';
+    r.textContent = shortAddr(rr.recipient);
+    r.title = rr.recipient||'';
+    log('Admin: '+ra.admin,'info');
+    log('Recipient: '+rr.recipient,'info');
+  }catch(e){
+    log('No se pudo obtener admin/recipient: '+e.message,'err');
+  }
+}
+
+async function queryRedeemable(){
+  const user=$('q-user').value.trim(), token=$('q-token').value.trim();
+  if(!user||!token) return setResult('r-query','⚠ Completa los campos','err');
+  setResult('r-query','// consultando...','info');
+  try{
+    const d = await apiFetch('/api/reward/redeemable/'+user+'/'+token);
+    const html = `user: ${shortAddr(d.user)}<br>token: ${shortAddr(d.token)}<br>redeemableAmount: <strong>${d.redeemableAmount}</strong>`;
+    setResult('r-query', html, 'ok');
+    log('Redeemable consultado: '+d.redeemableAmount,'ok');
+  }catch(e){
+    setResult('r-query','✗ '+e.message,'err');
+    log('Query error: '+e.message,'err');
+  }
+}
+
+async function previewRedeem(){
+  const user=$('rd-user').value.trim(), token=$('rd-token').value.trim();
+  if(!user||!token) return setResult('r-redeem','⚠ Completa los campos','err');
+  setResult('r-redeem','// previsualizando...','info');
+  try{
+    const d = await apiFetch('/api/reward/redeemable/'+user+'/'+token);
+    setResult('r-redeem',`PREVIEW — se redimirán: <strong>${d.redeemableAmount}</strong> tokens<br>de: ${shortAddr(user)}<br>token: ${shortAddr(token)}`,'ok');
+  }catch(e){
+    setResult('r-redeem','✗ '+e.message,'err');
+  }
+}
+
+async function doRedeem(){
+  const user=$('rd-user').value.trim(), token=$('rd-token').value.trim();
+  if(!user||!token) return setResult('r-redeem','⚠ Completa los campos','err');
+  setResult('r-redeem','// enviando transacción...','info');
+  log('Redeem iniciado para '+shortAddr(user),'info');
+  try{
+    const d = await apiFetch('/api/reward/redeem',{method:'POST',body:JSON.stringify({user,token})});
+    setResult('r-redeem','✓ TX confirmada<br>hash: '+txLink(d.transactionHash),'ok');
+    log('Redeem OK: '+d.transactionHash,'ok');
+  }catch(e){
+    setResult('r-redeem','✗ '+e.message,'err');
+    log('Redeem error: '+e.message,'err');
+  }
+}
+
+async function parseBatch(){
+  const raw=$('bt-tokens').value.trim();
+  const tokens=raw.split('\n').map(t=>t.trim()).filter(Boolean);
+  setResult('r-batch',`// ${tokens.length} token(s) detectados:\n`+tokens.map((t,i)=>`[${i}] ${t}`).join('\n'),'info');
+}
+
+async function doBatch(){
+  const user=$('bt-user').value.trim();
+  const raw=$('bt-tokens').value.trim();
+  if(!user||!raw) return setResult('r-batch','⚠ Completa los campos','err');
+  const tokens=raw.split('\n').map(t=>t.trim()).filter(Boolean);
+  if(!tokens.length) return setResult('r-batch','⚠ Sin tokens válidos','err');
+  setResult('r-batch','// ejecutando batch de '+tokens.length+' token(s)...','info');
+  log('Batch iniciado: '+tokens.length+' tokens para '+shortAddr(user),'info');
+  try{
+    const d = await apiFetch('/api/reward/batch-redeem',{method:'POST',body:JSON.stringify({user,tokens})});
+    setResult('r-batch','✓ Batch confirmado<br>tokens: '+tokens.length+'<br>hash: '+txLink(d.transactionHash),'ok');
+    log('Batch OK: '+d.transactionHash,'ok');
+  }catch(e){
+    setResult('r-batch','✗ '+e.message,'err');
+    log('Batch error: '+e.message,'err');
+  }
+}
+
+async function checkUser(){
+  const user=$('u-user').value.trim(), token=$('u-token').value.trim();
+  if(!user||!token) return setResult('r-user','⚠ Completa los campos','err');
+  setResult('r-user','// verificando...','info');
+  try{
+    const d = await apiFetch('/api/reward/redeemable/'+user+'/'+token);
+    const ready = parseInt(d.redeemableAmount)>0;
+    const html = ready
+      ? `✓ Usuario listo para redimir<br>amount disponible: <strong>${d.redeemableAmount}</strong>`
+      : `⚠ Sin allowance o sin balance<br>// El usuario debe hacer approve() primero`;
+    setResult('r-user', html, ready?'ok':'err');
+    log('Check usuario '+shortAddr(user)+': '+d.redeemableAmount, ready?'ok':'err');
+  }catch(e){
+    setResult('r-user','✗ '+e.message+'\n// El usuario necesita hacer approve() en el token','err');
+    log('Check error: '+e.message,'err');
+  }
+}
+
+function copyContract(){
+  const addr=$('u-contract').value.trim();
+  if(!addr) return setResult('r-contract','⚠ Introduce la dirección del contrato','err');
+  navigator.clipboard.writeText(addr).then(()=>{
+    setResult('r-contract','✓ Copiado: '+addr,'ok');
+  }).catch(()=>{
+    setResult('r-contract','Dirección: '+addr,'info');
+  });
+}
+
+async function doSetAdmin(){
+  const newAdmin=$('new-admin').value.trim();
+  if(!newAdmin) return setResult('r-admin','⚠ Introduce la dirección','err');
+  if(!confirm('¿Seguro? Cambiar el admin es irreversible desde esta cuenta.')) return;
+  setResult('r-admin','// procesando...','info');
+  log('Set admin: '+shortAddr(newAdmin),'info');
+  try{
+    const d = await apiFetch('/api/reward/set-admin',{method:'POST',body:JSON.stringify({newAdmin})});
+    setResult('r-admin','✓ Admin cambiado<br>hash: '+txLink(d.transactionHash),'ok');
+    log('Admin cambiado OK','ok');
+    refreshStats();
+  }catch(e){
+    setResult('r-admin','✗ '+e.message,'err');
+    log('Set admin error: '+e.message,'err');
+  }
+}
+
+async function doSetRecipient(){
+  const newRecipient=$('new-recipient').value.trim();
+  if(!newRecipient) return setResult('r-recipient','⚠ Introduce la dirección','err');
+  setResult('r-recipient','// procesando...','info');
+  log('Set recipient: '+shortAddr(newRecipient),'info');
+  try{
+    const d = await apiFetch('/api/reward/set-recipient',{method:'POST',body:JSON.stringify({newRecipient})});
+    setResult('r-recipient','✓ Recipient cambiado<br>hash: '+txLink(d.transactionHash),'ok');
+    log('Recipient cambiado OK','ok');
+    refreshStats();
+  }catch(e){
+    setResult('r-recipient','✗ '+e.message,'err');
+    log('Set recipient error: '+e.message,'err');
+  }
+}
+</script>
+</body>
+</html>
